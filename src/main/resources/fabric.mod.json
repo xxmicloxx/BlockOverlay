@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "id": "blockoverlay",
+  "version": "${version}",
+
+  "name": "Block Overlay",
+  "description": "Adds overlays to furnaces and others.",
+  "authors": [
+    "xxmicloxx"
+  ],
+
+  "license": "CC0-1.0",
+  "icon": "assets/blockoverlay/icon.png",
+
+  "environment": "client",
+  "entrypoints": {
+    "main": [
+      "com.xxmicloxx.blockoverlay.BlockOverlayModKt::init"
+    ]
+  },
+  "mixins": [
+    "blockoverlay.mixins.json"
+  ],
+  "depends": {
+    "fabricloader": ">=0.7.1",
+    "fabric": "*",
+    "fabric-language-kotlin": "*",
+    "minecraft": "1.15.x"
+  },
+  "suggests": {
+    "flamingo": "*"
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "required": true,
+  "package": "com.xxmicloxx.blockoverlay.mixins",
+  "minVersion": "0.7.10",
+  "compatibilityLevel": "JAVA_8",
+  "mixins": [],
+  "client": [
+    "WorldRendererMixin",
+    "OpenContainerMixin",
+    "ClientPlayerInteractionManagerMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}
