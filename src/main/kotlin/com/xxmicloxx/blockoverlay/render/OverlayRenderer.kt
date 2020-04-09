@@ -45,16 +45,7 @@ object OverlayRenderer {
 
     private var enableOpacity = 0.0f
 
-    private val sideOpacity = arrayOf(0f, 0f, 0f, 0f, 0f, 0f)
-    private var currentSide: Direction? = null
     private var currentRotation: Direction? = null
-    private var orientationLocked: Boolean = false
-
-    private val visibleSides: List<Direction>
-        get() = sideOpacity.indices.filter { sideOpacity[it] != 0f }.map { Direction.byId(it) }
-
-    private val hasVisibleSide: Boolean
-        get() = visibleSides.isNotEmpty()
 
 
     fun enable() {
@@ -67,7 +58,6 @@ object OverlayRenderer {
     fun disable() {
         if (currentState != State.DISABLED && currentState != State.STOPPING) {
             currentState = State.STOPPING
-            orientationLocked = true
             ContainerHelper.pause()
         }
     }
@@ -85,8 +75,6 @@ object OverlayRenderer {
     private fun destroyState() {
         renderStates.forEach { it.destroy() }
         renderStates.clear()
-
-        sideOpacity.indices.forEach { sideOpacity[it] = 0f }
     }
 
     fun tick() {
@@ -135,6 +123,7 @@ object OverlayRenderer {
 
     private fun startRender() {
         RenderSystem.enableDepthTest()
+        RenderSystem.depthMask(false)
 
         RenderSystem.shadeModel(GL11.GL_SMOOTH)
 
@@ -149,9 +138,10 @@ object OverlayRenderer {
 
     private fun endRender() {
         RenderSystem.enableAlphaTest()
-        RenderSystem.enableBlend()
+        //RenderSystem.enableBlend()
         RenderSystem.enableTexture()
-        RenderSystem.enableDepthTest()
+        RenderSystem.disableDepthTest()
+        RenderSystem.depthMask(true)
         RenderSystem.shadeModel(GL11.GL_FLAT)
     }
 
@@ -174,7 +164,6 @@ object OverlayRenderer {
         // get all furnaces in area around player
         val camPos = MC.camera.pos
         updateOrientation(player)
-        updateOpacity(delta)
 
         val renderEntities = renderStates.filter {
             player.squaredDistanceTo(it.entity.pos.x + 0.5, it.entity.pos.y + 0.5, it.entity.pos.z + 0.5) <=
@@ -201,7 +190,6 @@ object OverlayRenderer {
                 enableOpacity = max(0f, enableOpacity - delta * OPACITY_FADE_RATE)
                 if (enableOpacity == 0f) {
                     currentState = State.DISABLED
-                    orientationLocked = false
                 }
             }
 
@@ -216,7 +204,6 @@ object OverlayRenderer {
     ) {
         val rotation = currentRotation ?: Direction.NORTH
         val pos = state.entity.pos
-        val renderSides = visibleSides
 
         val distanceSquared =
             player.squaredDistanceTo(state.entity.pos.x + 0.5, state.entity.pos.y + 0.5, state.entity.pos.z + 0.5)
@@ -233,88 +220,36 @@ object OverlayRenderer {
         val stack = MatrixStack()
         stack.translate(pos.x - camPos.x, pos.y - camPos.y, pos.z - camPos.z)
 
-        renderSides.forEach { renderSide ->
+        Direction.values().forEach { renderSide ->
             stack.push()
             translateToFace(stack, renderSide, rotation)
             stack.translate(0.0, 0.001, 0.0)
+            //stack.scale(1.005f, 1f, 1.005f)
 
-            val alpha = fadingAlpha * sideOpacity[renderSide.id] * enableOpacity
+            val alpha = fadingAlpha * enableOpacity
 
             RenderSystem.pushMatrix()
             RenderSystem.multMatrix(stack.peek().model)
             val renderer = rendererRegistry[state.entity.type]!!
-            renderer.render(state, alpha)
+            renderer.render(state, renderSide, alpha)
             RenderSystem.popMatrix()
             stack.pop()
         }
     }
-
-    fun lockOrientation() {
-        orientationLocked = true
-
-        // snap orientation
-        currentSide = null
-        updateOrientation(MC.player ?: return)
-    }
-
-    fun unlockOrientation() {
-        orientationLocked = false
-    }
-
     private fun updateOrientation(entity: Entity) {
-        if (orientationLocked && currentSide != null) {
-            return
-        }
-
-        val verticalThreshold = 60 / 180f * PI.toFloat()
-        val horizontalThreshold = 70 / 180f * PI.toFloat()
-        val horizontalVecThreshold = MathHelper.sin(horizontalThreshold)
-
-        val pitch = entity.getPitch(1.0f) * 0.017453292f
         val yaw = -entity.getYaw(1.0f) * 0.017453292f
-        val y = MathHelper.sin(pitch)
         val x = MathHelper.sin(yaw)
         val z = MathHelper.cos(yaw)
         val xPos = x > 0.0f
-        val yPos = y < 0.0f
         val zPos = z > 0.0f
         val absX = if (xPos) x else -x
         val absZ = if (zPos) z else -z
         val axisX =
             if (xPos) Direction.EAST else Direction.WEST
-        val axisY =
-            if (yPos) Direction.UP else Direction.DOWN
         val axisZ =
             if (zPos) Direction.SOUTH else Direction.NORTH
 
         val greaterAxis = if (absX > absZ) axisX else axisZ
-        if (abs(pitch) > verticalThreshold) {
-            currentSide = axisY.opposite
-            currentRotation = greaterAxis
-        } else {
-            if (currentSide?.axis == Direction.Axis.Y || currentSide == null) {
-                currentSide = greaterAxis.opposite
-            }
-
-            val greaterAbs = max(absX, absZ)
-            if (greaterAbs > horizontalVecThreshold) {
-                // snap using threshold grid
-                currentSide = greaterAxis.opposite
-            }
-        }
-    }
-
-    private fun updateOpacity(delta: Float) {
-        val renderSide = currentSide ?: return
-        val opacityDelta = OPACITY_FADE_RATE * delta
-
-        if (hasVisibleSide) {
-            sideOpacity[renderSide.id] = min(1.0f, sideOpacity[renderSide.id] + opacityDelta)
-            sideOpacity.indices
-                .filter { it != renderSide.id }
-                .forEach { sideOpacity[it] = max(0f, sideOpacity[it] - opacityDelta) }
-        } else {
-            sideOpacity[renderSide.id] = 1.0f
-        }
+        currentRotation = greaterAxis
     }
 }

@@ -4,6 +4,8 @@ import net.minecraft.client.MinecraftClient
 import net.minecraft.client.gui.screen.Screen
 import net.minecraft.client.network.ClientPlayNetworkHandler
 import net.minecraft.client.render.Camera
+import net.minecraft.client.render.GameRenderer
+import net.minecraft.client.render.LightmapTextureManager
 import net.minecraft.client.util.math.MatrixStack
 import net.minecraft.client.util.math.Vector3f
 import net.minecraft.entity.player.PlayerEntity
@@ -23,11 +25,14 @@ object MC {
     val currentWorld: World?
         get() = instance.world
 
-    val networkHandler: ClientPlayNetworkHandler?
-        get() = instance.networkHandler
-
     val currentScreen: Screen?
         get() = instance.currentScreen
+
+    val gameRenderer: GameRenderer
+        get() = instance.gameRenderer
+
+    val lightmapTextureManager: LightmapTextureManager
+        get() = gameRenderer.lightmapTextureManager
 }
 
 fun translateToFace(stack: MatrixStack, face: Direction, rotation: Direction? = null) = stack.apply {

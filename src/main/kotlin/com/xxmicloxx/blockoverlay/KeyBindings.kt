@@ -42,11 +42,9 @@ object KeyBindings {
             if (!toggleOverlayWasOn) {
                 OverlayRenderer.enable()
             }
-            OverlayRenderer.lockOrientation()
         } else if (!toggleOverlay.isPressed && holdStart != null) {
             // no longer holding, reset
             toggleOverlayHoldStart = null
-            OverlayRenderer.unlockOrientation()
 
             // check elapsed time
             val elapsed = Util.getMeasuringTimeMs() - holdStart
