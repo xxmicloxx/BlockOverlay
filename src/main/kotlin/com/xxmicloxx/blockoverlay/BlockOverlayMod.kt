@@ -17,6 +17,10 @@ fun init() {
     ClientTickCallback.EVENT.register(ClientTickCallback { tick() })
 }
 
+fun renderInit() {
+    OverlayRenderer.renderInit()
+}
+
 fun tick() {
     KeyBindings.tick()
     ContainerHelper.tick()

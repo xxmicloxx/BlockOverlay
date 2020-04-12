@@ -43,9 +43,6 @@ object ContainerHelper {
     var currentRequest: ContentRequest? = null
         private set
 
-    val requesting: Boolean
-        get() = currentRequest != null
-
     fun requestContainerContents(entity: BlockEntity, receiver: ContentReceiver) {
         pendingRequests.push(ContentRequest(entity, receiver))
     }
@@ -127,7 +124,7 @@ object ContainerHelper {
 
         val skipped = mutableListOf<ContentRequest>()
 
-        if (!requesting && requestDelay == 0) {
+        if (currentRequest == null && requestDelay == 0) {
             while (pendingRequests.isNotEmpty() && currentRequest == null) {
                 val req = pendingRequests.remove()
                 val pos = req.entity.pos

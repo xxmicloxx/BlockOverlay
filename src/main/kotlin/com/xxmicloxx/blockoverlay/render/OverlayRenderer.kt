@@ -1,5 +1,6 @@
 package com.xxmicloxx.blockoverlay.render
 
+import com.mojang.blaze3d.platform.GlStateManager
 import com.mojang.blaze3d.systems.RenderSystem
 import com.xxmicloxx.blockoverlay.ContainerHelper
 import com.xxmicloxx.blockoverlay.render.block.BlockOverlayRenderer
@@ -7,6 +8,8 @@ import com.xxmicloxx.blockoverlay.render.block.FurnaceOverlayRenderer
 import com.xxmicloxx.blockoverlay.render.state.BlockRenderState
 import net.minecraft.block.entity.BlockEntity
 import net.minecraft.block.entity.BlockEntityType
+import net.minecraft.client.MinecraftClient
+import net.minecraft.client.gl.Framebuffer
 import net.minecraft.client.util.math.MatrixStack
 import net.minecraft.entity.Entity
 import net.minecraft.entity.player.PlayerEntity
@@ -47,6 +50,8 @@ object OverlayRenderer {
 
     private var currentRotation: Direction? = null
 
+    private lateinit var renderFrameBuffer: Framebuffer
+
 
     fun enable() {
         if (currentState != State.ENABLED && currentState != State.STARTING) {
@@ -75,6 +80,10 @@ object OverlayRenderer {
     private fun destroyState() {
         renderStates.forEach { it.destroy() }
         renderStates.clear()
+    }
+
+    fun renderInit() {
+        renderFrameBuffer = Framebuffer(128, 128, false, MinecraftClient.IS_SYSTEM_MAC)
     }
 
     fun tick() {
