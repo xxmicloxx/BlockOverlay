@@ -1,41 +1,25 @@
 package com.xxmicloxx.blockoverlay.render.state
 
-import com.xxmicloxx.blockoverlay.ContainerHelper
-import net.minecraft.block.entity.FurnaceBlockEntity
-import net.minecraft.item.ItemStack
+import com.xxmicloxx.blockoverlay.render.DrawCache
+import net.minecraft.block.entity.AbstractFurnaceBlockEntity
 
-class FurnaceRenderState(entity: FurnaceBlockEntity) :
-    BlockRenderState<FurnaceBlockEntity>(entity), ContainerHelper.ContentReceiver {
+class FurnaceRenderState(entity: AbstractFurnaceBlockEntity) : ContainerRenderState<AbstractFurnaceBlockEntity>(entity) {
 
-    enum class Status {
-        LOADING, FAILED, DONE
-    }
-
-    var status: Status = Status.LOADING
-    var inventory: List<ItemStack>? = null
+    private val caches = mutableMapOf<Int, DrawCache>()
 
     init {
-        fetchData()
+        requestContents()
     }
 
-    private fun fetchData() {
-        ContainerHelper.requestContainerContents(entity, this)
+    fun clearCache() {
+        caches.values.forEach { it.destroy() }
     }
+
+    fun getCache(lightUv: Int): DrawCache =
+            caches.getOrPut(lightUv) { DrawCache() }
 
     override fun destroy() {
-        ContainerHelper.cancelContentRequest(entity)
+        clearCache()
         super.destroy()
-    }
-
-    override fun onInventoryReceived(inventory: List<ItemStack>) {
-        status = Status.DONE
-        this.inventory = inventory
-    }
-
-    override fun onPropertyReceived(id: Int, value: Int) {
-    }
-
-    override fun onInventoryReceiveError() {
-        status = Status.FAILED
     }
 }

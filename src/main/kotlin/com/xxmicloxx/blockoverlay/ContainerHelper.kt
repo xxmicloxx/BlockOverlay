@@ -3,6 +3,7 @@ package com.xxmicloxx.blockoverlay
 import com.xxmicloxx.blockoverlay.render.MC
 import net.fabricmc.fabric.api.network.ClientSidePacketRegistry
 import net.minecraft.block.entity.BlockEntity
+import net.minecraft.client.MinecraftClient
 import net.minecraft.item.ItemStack
 import net.minecraft.network.packet.c2s.play.ClientCommandC2SPacket
 import net.minecraft.network.packet.c2s.play.GuiCloseC2SPacket
@@ -11,6 +12,7 @@ import net.minecraft.util.Hand
 import net.minecraft.util.hit.BlockHitResult
 import net.minecraft.util.math.Direction
 import java.util.*
+import kotlin.math.max
 
 object ContainerHelper {
     data class ContentRequest(
@@ -29,7 +31,7 @@ object ContainerHelper {
     private const val TIMEOUT_TICKS = 20
     private const val FAILURE_RETRY_TICKS = 20
     private const val RELOAD_TICKS = 100
-    private const val REQUEST_DELAY_TICKS = 0
+    private const val REQUEST_DELAY_TICKS = 1
     private const val INTERACT_PAUSE_TICKS = 5
 
     private const val CLICK_DISTANCE = 5.0
@@ -37,6 +39,8 @@ object ContainerHelper {
 
     private var requestDelay = 0
     private var paused = false
+    private var pendingInteract: PlayerInteractBlockC2SPacket? = null
+    private var isOwnInteract = false
 
     private val pendingRequests = ArrayDeque<ContentRequest>()
     private val requests = mutableListOf<ContentRequest>()
@@ -65,7 +69,23 @@ object ContainerHelper {
         paused = false
     }
 
-    fun pauseForInteract() {
+    fun handlePlayerInteract(data: PlayerInteractBlockC2SPacket): Boolean {
+        if (isOwnInteract) {
+            isOwnInteract = false
+            return false
+        }
+
+        if (currentRequest == null && requestDelay == 0 &&
+                (pendingRequests.size == 0 || paused || pendingInteract == data)) {
+
+            return false
+        }
+
+        pendingInteract = data
+        return true
+    }
+
+    private fun pauseForInteract() {
         requestDelay = INTERACT_PAUSE_TICKS
     }
 
@@ -103,6 +123,15 @@ object ContainerHelper {
             }
     }
 
+    private fun executePendingInteract(): Boolean {
+        val interact = pendingInteract ?: return false
+        val networkHandler = MinecraftClient.getInstance().networkHandler ?: return false
+
+        networkHandler.sendPacket(interact)
+        pendingInteract = null
+        return true
+    }
+
     private fun requestNext() {
         val player = MC.player
         if (player == null) {
@@ -112,13 +141,21 @@ object ContainerHelper {
             return
         }
 
-        if (paused) {
+        // check if in GUI
+        if (MC.currentScreen != null || MC.player?.activeItem?.isEmpty == false) {
+            // this will close GUIs and cancel eating, retry later
+            requestDelay = max(INTERACT_PAUSE_TICKS, requestDelay)
             return
         }
 
-        // check if in GUI
-        if (MC.currentScreen != null) {
-            // this will close GUIs, retry later
+        if ((currentRequest == null && requestDelay == 0) || paused) {
+            if (executePendingInteract()) {
+                pauseForInteract()
+                return
+            }
+        }
+
+        if (paused) {
             return
         }
 
@@ -148,6 +185,7 @@ object ContainerHelper {
         requestDelay = 0
         pendingRequests.clear()
         requests.clear()
+        pendingInteract = null
     }
 
     private fun getContainerContents() {
@@ -171,6 +209,7 @@ object ContainerHelper {
         // send interact
         val blockHit = BlockHitResult(player.pos, Direction.NORTH, entity.pos, false)
         val openPacket = PlayerInteractBlockC2SPacket(Hand.MAIN_HAND, blockHit)
+        isOwnInteract = true
         ClientSidePacketRegistry.INSTANCE.sendToServer(openPacket)
 
         if (sneaking) {
@@ -196,6 +235,11 @@ object ContainerHelper {
         }
 
         currentRequest = null
+
+        if (pendingInteract != null) {
+            requestDelay = INTERACT_PAUSE_TICKS
+            return
+        }
 
         if (requestDelay == 0) {
             requestDelay = REQUEST_DELAY_TICKS

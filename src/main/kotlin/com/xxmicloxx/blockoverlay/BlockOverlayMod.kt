@@ -1,13 +1,14 @@
 package com.xxmicloxx.blockoverlay
 
 import com.xxmicloxx.blockoverlay.render.OverlayRenderer
+import com.xxmicloxx.blockoverlay.render.Textures
+import com.xxmicloxx.blockoverlay.render.TransparentBufferBuilder
 import net.fabricmc.fabric.api.client.keybinding.FabricKeyBinding
 import net.fabricmc.fabric.api.event.client.ClientTickCallback
 import net.minecraft.util.Util
 
 // For support join https://discord.gg/v6v4pMv
 
-private lateinit var toggleKeyBinding: FabricKeyBinding
 private var lastRender: Long? = null
 
 @Suppress("unused")
@@ -18,7 +19,8 @@ fun init() {
 }
 
 fun renderInit() {
-    OverlayRenderer.renderInit()
+    TransparentBufferBuilder.renderInit()
+    Textures.renderInit()
 }
 
 fun tick() {

@@ -1,60 +1,60 @@
 package com.xxmicloxx.blockoverlay.render.block
 
-import com.xxmicloxx.blockoverlay.render.MC
+import com.xxmicloxx.blockoverlay.render.DrawCache
+import com.xxmicloxx.blockoverlay.render.Textures
+import com.xxmicloxx.blockoverlay.render.bridge.RenderBridge
 import com.xxmicloxx.blockoverlay.render.state.BlockRenderState
+import com.xxmicloxx.blockoverlay.render.state.ContainerRenderState
 import com.xxmicloxx.blockoverlay.render.state.FurnaceRenderState
+import net.minecraft.block.AbstractFurnaceBlock
+import net.minecraft.block.entity.AbstractFurnaceBlockEntity
 import net.minecraft.block.entity.BlockEntity
 import net.minecraft.block.entity.BlockEntityType
 import net.minecraft.block.entity.FurnaceBlockEntity
-import net.minecraft.client.render.*
-import net.minecraft.util.math.Direction
-import org.lwjgl.opengl.GL11
 
-class FurnaceOverlayRenderer : BlockOverlayRenderer {
+class FurnaceOverlayRenderer : ContainerOverlayRenderer() {
     override val matchedBlocks: Set<BlockEntityType<out BlockEntity>>
-        get() = setOf(BlockEntityType.FURNACE)
-
-    override fun render(
-        state: BlockRenderState<BlockEntity>,
-        side: Direction,
-        alpha: Float
-    ) {
-        val furnaceState = state as FurnaceRenderState
-
-        drawBackground(furnaceState, side, alpha)
-    }
-
-    private fun drawBackground(state: FurnaceRenderState, side: Direction, alpha: Float) {
-        val world = MC.currentWorld ?: return
-        val tess = Tessellator.getInstance()
-        val buf = tess.buffer
-
-        /*val r = 0.05f
-        val g = 0.05f
-        val b = 0.05f*/
-
-        val r = if (state.status != FurnaceRenderState.Status.DONE) 0.5f else 0.05f
-        val g = if (state.status != FurnaceRenderState.Status.FAILED) 0.5f else 0.05f
-        val b = 0.05f
-        val a = 0.93f * alpha
-
-        MC.lightmapTextureManager.enable()
-
-        val blockState = world.getBlockState(state.entity.pos)
-        val lightCoords = WorldRenderer.getLightmapCoordinates(world, blockState, state.entity.pos.offset(side))
-
-        buf.begin(GL11.GL_TRIANGLE_STRIP, VertexFormats.POSITION_COLOR_LIGHT)
-
-        buf.vertex(0.0, 0.0, 0.0).color(r, g, b, a).light(lightCoords).next()
-        buf.vertex(0.0, 0.0, 1.0).color(r, g, b, a).light(lightCoords).next()
-        buf.vertex(1.0, 0.0, 0.0).color(r, g, b, a).light(lightCoords).next()
-        buf.vertex(1.0, 0.0, 1.0).color(r, g, b, a).light(lightCoords).next()
-
-        tess.draw()
-
-        MC.lightmapTextureManager.disable()
-    }
+        get() = setOf(BlockEntityType.FURNACE, BlockEntityType.BLAST_FURNACE, BlockEntityType.SMOKER)
 
     override fun createRenderState(entity: BlockEntity): BlockRenderState<BlockEntity> =
-        FurnaceRenderState(entity as FurnaceBlockEntity)
+        FurnaceRenderState(entity as AbstractFurnaceBlockEntity)
+
+    override fun drawContent(state: ContainerRenderState<BlockEntity>, bridge: RenderBridge) {
+        val furnaceState = state as FurnaceRenderState
+
+        if (bridge.globalAlpha != 1f) {
+            // cannot use cache
+            redrawContent(state, bridge)
+            return
+        }
+
+        if (furnaceState.pollUpdate()) {
+            // clear caches
+            furnaceState.clearCache()
+        }
+
+        val cache = furnaceState.getCache(bridge.lightUv)
+        if (!cache.isCached) {
+            cache.startDrawing(true)
+            redrawContent(state, bridge)
+            cache.finishDrawing()
+        } else {
+            // draw from cache
+            cache.draw()
+        }
+    }
+
+    private fun redrawContent(state: ContainerRenderState<BlockEntity>, bridge: RenderBridge) {
+        bridge.itemFrame(state.inventory[0]).pos(0.15, 0.15).z(0.01).draw()
+        bridge.itemFrame(state.inventory[1]).pos(0.15, 0.65).z(0.01).draw()
+        bridge.itemFrame(state.inventory[2]).pos(0.5, 0.35).z(0.01).height(0.3).draw()
+
+        val isLit = state.entity.cachedState.get(AbstractFurnaceBlock.LIT)
+        val builder = bridge.rect(0.21, 0.4275, 0.15, 0.15).texture(Textures.FLAMES).z(0.01)
+        if (isLit) {
+            builder.color(1f, 0.9f, 0f, 0.9f).draw()
+        } else {
+            builder.color(0.05f, 0.05f, 0.05f, 0.9f).draw()
+        }
+    }
 }

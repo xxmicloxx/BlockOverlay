@@ -46,15 +46,13 @@ public class OpenContainerMixin {
         ContainerHelper.INSTANCE.gotContainerContents(packet.getSlotStacks());
     }
 
-    @Inject(method = "onContainerPropertyUpdate", cancellable = true, at = @At(
+    @Inject(method = "onContainerPropertyUpdate", at = @At(
             value = "INVOKE",
             target = "Lnet/minecraft/network/NetworkThreadUtils;forceMainThread(Lnet/minecraft/network/Packet;Lnet/minecraft/network/listener/PacketListener;Lnet/minecraft/util/thread/ThreadExecutor;)V",
             shift = At.Shift.AFTER
     ))
     private void onContainerPropertyUpdateTrap(ContainerPropertyUpdateS2CPacket packet, CallbackInfo ci) {
-        if (ContainerHelper.INSTANCE.gotContainerProperties(packet.getSyncId(), packet.getPropertyId(), packet.getValue())) {
-            ci.cancel();
-        }
+        ContainerHelper.INSTANCE.gotContainerProperties(packet.getSyncId(), packet.getPropertyId(), packet.getValue());
     }
 
     @Inject(method = "onEntityAnimation", cancellable = true, at = @At(

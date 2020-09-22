@@ -7,8 +7,9 @@
   "client": [
     "WorldRendererMixin",
     "OpenContainerMixin",
-    "ClientPlayerInteractionManagerMixin",
-    "DebugRendererMixin"
+    "ClientPlayNetworkHandlerMixin",
+    "DebugRendererMixin",
+    "TextRendererMixin"
   ],
   "injectors": {
     "defaultRequire": 1
